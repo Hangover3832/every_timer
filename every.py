@@ -6,7 +6,7 @@ Github: https://github.com/Hangover3832/every
 """
 
 from time import monotonic
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 from functools import wraps
 
 
@@ -17,7 +17,7 @@ class Every:
     Args:
         interval (float): The time interval in seconds between function executions.
         execute_immediately (bool): If True, the function will be executed immediately upon the first call.
-        keep_interval (bool): Keep correct time interval if set to True, else keep time distance after function call
+        keep_interval (bool): Keep correct time interval if set to True, else keep temporal distance after function call
     Attributes:
         interval (float): The time interval between executions (readable/writable)
         time_func (Callable): The function used to get the current time (default is monotonic)
@@ -38,25 +38,33 @@ class Every:
     @classmethod # decorator for class Every
     def every(cls, interval: float, *, 
             timer_function: Callable = monotonic, 
-            execute_immadeately: bool = False,
+            execute_immediately: bool = False,
             keep_interval : bool = True,
-            **kwargs: Any
-            ) -> Callable:
+            **kwargs: Optional[Any]
+            ) -> Callable[[Callable], 'Every']:
         """Decorator to create an Every instance and set the kwargs.
         Args:
             interval (float): The time interval in seconds between function executions.
             **kwargs: Additional keyword arguments to pass to the function.
         """
-        @wraps(cls)
-        def wrapper(func: Callable) -> Every:
-            return cls(interval, execute_immediately=execute_immadeately, keep_interval=keep_interval).do(func).among(**kwargs).using(timer_function)
-        
+        @wraps(wrapped=cls)
+        def wrapper(func: Callable) -> 'Every':
+            inst = cls(
+                    interval, 
+                    execute_immediately=execute_immediately, 
+                    keep_interval=keep_interval
+                    ).do(func
+                    ).among(**kwargs
+                    ).using(timer_function)
+            inst._is_decorator = True
+            return inst
+
         return wrapper
 
 
     def __init__(self, interval: float, *, execute_immediately: bool = False, keep_interval: bool = True) -> None:
         if interval <= 0:
-            raise ValueError("Interval must be positive")
+            raise ValueError("Error: Interval must be positive.")
 
         self._interval = interval
         self._keep_interval = keep_interval
@@ -65,6 +73,7 @@ class Every:
         self._kwargs = {}
         self._paused = False
         self._next_time = self._time_func() if execute_immediately else self._time_func() + interval
+        self._is_decorator = False
 
 
     def do(self, action: Callable) -> 'Every':
@@ -102,7 +111,7 @@ class Every:
         return self
 
 
-    def __call__(self, *args, **kwargs: Any) -> tuple[bool, Any]:
+    def __call__(self, *args, **kwargs: Any) -> tuple[bool, Optional[Any]]:
         """
         Checks if the scheduled interval has passed and executes the stored function if so.
 
@@ -121,16 +130,21 @@ class Every:
             raise ValueError("No action has been set. Use the 'do' method to set a function to execute.")
         
         if self._time_func() >= self._next_time:
-            # self._next_time += self._interval
+            self._next_time += self._interval
             merged_kwargs = {**self._kwargs, **kwargs}
             result = self._action(*args, **merged_kwargs)
-            self._next_time = self._next_time + self._interval if self._keep_interval else self._time_func() + self._interval
+            if not self._keep_interval:
+                self._next_time = self._time_func() + self._interval
             return True, result
-    
+
         return False, None
 
+    def __repr__(self) -> str:
+        """Return a string representation of the object."""
+        return f"Every(action={self._action}, interval={self._interval}, next_time={self._next_time}, is_decorator={self.is_decorator})"
 
-    def execute(self, *args, **kwargs: Any) -> Any:
+
+    def execute(self, *args: Optional[Any], **kwargs: Optional[Any]) -> Optional[Any]:
         """Execute the function immediately"""
         if self._action is None:
             raise ValueError("No action has been set. Use the 'do' method to set a function to execute.")
@@ -153,13 +167,21 @@ class Every:
         if value <= 0:
             raise ValueError("Interval must be positive")
         self.reset()._interval = value
-
+ 
 
     @property
     def time_remaining(self) -> float:
         """Get the time remaining until next execution."""
         return max(0.0, self._next_time - self._time_func())
-
+    
+    @property
+    def time_func(self) -> Callable[[], float]:
+        """Get the current time function."""
+        return self._time_func
+    
+    @property
+    def is_decorator(self) -> bool:
+        return self._is_decorator
 
 
 def Demo():
@@ -176,26 +198,31 @@ def Demo():
         # since this function takes 2 seconds to execute and keep_interval is False,
         # the effective interval is about 7 seconds
 
+    VerySimple.interval = 4.9 # override interval at runtime
+    print(VerySimple) # testing __repr__()
 
     # decorator usage:
-    @Every.every(2.71, param2=10, param3=20, timer_function=monotonic, execute_immadeately=True) # static param1 and param2, execute on first call
+    @Every.every(2.71, param2=10, param3=20, timer_function=monotonic, execute_immediately=True) # static param1 and param2, execute on first call
     def MyFunction1(param1, param2, param3): # param1 is required dynamically when calling the function
         print(f"Function1 executed with {param1=}, {param2=} and {param3=}")
         return param1 + param2 + param3
-    
+    print(MyFunction1)
+
 
     # direct usage:
     def MyFunction2(a, b):
         print(f"MyFunction2 executed with {a=} and {b=}")
         return a * b
     my_function2_timer = Every(3.14).do(MyFunction2).among(a=5, b=6).using(perf_counter) # static parameter a and b & use different timer
+    print(my_function2_timer)
 
-    VerySimple.reset().execute() # reset the timer and execute immediately
+
+    VerySimple.reset().execute() # reset the timer and execute immediatelye
 
     while True:
         VerySimple()
 
-        executed, res = MyFunction1(counter) # Add param1 dynamically # type: ignore
+        executed, res = MyFunction1(counter) # Add param1 dynamically
         if executed:
             print(f"Function1 returned: {res}, function2 time remaining: {my_function2_timer.time_remaining:.2f}s")
             counter += 1
@@ -208,4 +235,4 @@ def Demo():
 
 
 if __name__ == "__main__":
-    Demo()
+    Demo() # This will run the demo code
