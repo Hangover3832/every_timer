@@ -127,14 +127,17 @@ Every(interval: float, execute_immediately: bool = False, keep_interval: bool = 
 
 - `interval`: Get/set the time interval between executions
 - `time_remaining`: Get the remaining time until the next execution (read only)
+- `time_func`: Get the function for retrieving current time (read only)
+- `is_decorator`: Check if this instance was created as a decorator or not (read only)
+
 
 ## Notes
 
 - The class uses `time.monotonic()` by default for precise and reliable timing
 - Changing the interval resets the next execution time
-- The class maintains consistent intervals by adding the interval to the last scheduled time
+- The class maintains consistent intervals by adding the interval to the last scheduled time, or optional add the interval after execution
 - Additional keyword arguments can be passed both during initialization and execution
-- pylance seems to have some troubles with type checking the decorated functions
+
 
 ## License
 
