@@ -146,14 +146,12 @@ class Every:
         """Return a string representation of the object."""
         return f"Every(action={self._action}, interval={self._interval}, next_time={self._next_time}, is_decorator={self.is_decorator})"
 
-
     def execute(self, *args: Optional[Any], **kwargs: Optional[Any]) -> Optional[Any]:
         """Execute the function immediately"""
         if self._action is None:
             raise ValueError("No action has been set. Use the 'do' method to set a function to execute.")
         merged_kwargs = {**self._kwargs, **kwargs}
         return self._action(*args, **merged_kwargs)
-
 
     @property
     def interval(self) -> float:
@@ -170,9 +168,9 @@ class Every:
         """
         if value <= 0:
             raise ValueError("Interval must be positive")
-        self.reset()._interval = value
+        self._interval = value
+        self.reset()
  
-
     @property
     def time_remaining(self) -> float:
         """Get the time remaining until next execution."""
