@@ -36,8 +36,10 @@ class Every:
     """
 
     @classmethod # decorator for class Every
-    def every(cls, interval: float, *, 
-            timer_function: Callable = monotonic, 
+    def every(cls,
+            interval: float, 
+            *, 
+            timer_function: Callable[[], float] = monotonic, 
             execute_immediately: bool = False,
             keep_interval : bool = True,
             **kwargs: Optional[Any]
@@ -50,7 +52,7 @@ class Every:
             **kwargs: Additional keyword arguments to pass to the function.
         """
         @wraps(wrapped=cls)
-        def wrapper(func: Callable) -> 'Every':
+        def wrapper(func: Callable[[], float]) -> 'Every':
             inst = cls(
                     interval, 
                     execute_immediately=execute_immediately, 
@@ -68,26 +70,26 @@ class Every:
         if interval <= 0:
             raise ValueError("Error: Interval must be positive.")
 
-        self._interval = interval
-        self._keep_interval = keep_interval
-        self._time_func = monotonic
-        self._action = None
+        self._interval: float = interval
+        self._keep_interval: bool = keep_interval
+        self._time_func: Callable[[], float] = monotonic
+        self._action: Callable | None = None
         self._kwargs = {}
-        self._paused = False
-        self._next_time = self._time_func() if execute_immediately else self._time_func() + interval
-        self._is_decorator = False
+        self._paused: bool = False
+        self._next_time: float = self._time_func() if execute_immediately else self._time_func() + interval
+        self._is_decorator: bool = False
 
 
     def do(self, action: Callable) -> 'Every':
         """Sets the function to be executed."""
         self._action = action
         return self
-    
+
 
     def among(self, **kwargs: Any) -> 'Every':
         self._kwargs = kwargs
         return self
- 
+
 
     def using(self, time_func: Callable) -> 'Every':
         """Sets a custom time function (default is monotonic)."""
@@ -106,7 +108,7 @@ class Every:
         self._paused = True
         return self
 
-    
+
     def resume(self) -> 'Every':
         """Continue execution"""
         self._paused = False
@@ -141,6 +143,7 @@ class Every:
             return True, result
 
         return False, None
+
 
     def __repr__(self) -> str:
         """Return a string representation of the object."""

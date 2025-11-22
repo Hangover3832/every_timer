@@ -1,14 +1,15 @@
 from every import Every
 from time import sleep, perf_counter, monotonic
 
+
 def Demo():
     counter = 0
 
     # simplest usage:
     @Every.every(5.0, keep_interval=False)
-    def VerySimple():
+    def VerySimple() -> None:
         sleep(2)
-        print(f"A very simple but expensive function has been executed")
+        print(f"A very simple but expensive function has been executed.")
         # since this function takes 2 seconds to execute and keep_interval is False,
         # the effective interval is about 7 seconds
 
@@ -22,14 +23,12 @@ def Demo():
         return param1 + param2 + param3
     print(MyFunction1)
 
-
     # direct usage:
     def MyFunction2(a, b):
         print(f"MyFunction2 executed with {a=} and {b=}")
         return a * b
-    my_function2_timer = Every(3.14).do(MyFunction2).among(a=5, b=6).using(perf_counter) # static parameter a and b & use different timer
+    my_function2_timer = Every(3.14).do(MyFunction2).among(a=5, b=6).using(perf_counter) # static parameter a and b & use different timer function
     print(my_function2_timer)
-
 
     VerySimple.reset().execute() # reset the timer and execute immediately
 
