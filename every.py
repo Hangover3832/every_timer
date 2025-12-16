@@ -32,7 +32,7 @@ class Every:
             - bool: True if function was executed, False otherwise
             - Any: Return value from do() if executed, None otherwise
     Example:
-        icluded in Demo() function below
+        icluded in the demo_and_test.py file
     """
 
     @classmethod # decorator for class Every
