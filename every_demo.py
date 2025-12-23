@@ -1,9 +1,8 @@
 from every import Every
 from time import sleep, perf_counter, monotonic
-
+from random import random
 
 def Demo():
-    counter = 0
 
     # simplest usage:
     @Every.every(5.0, keep_interval=False)
@@ -18,9 +17,10 @@ def Demo():
 
     # decorator usage:
     @Every.every(2.71, param2=10, param3=20, timer_function=monotonic, execute_immediately=True) # static param1 and param2, execute on first call
-    def MyFunction1(param1, param2, param3): # param1 is required dynamically when calling the function
+    def MyFunction1(param1, param2, param3) -> int: # param1 is required dynamically when calling the function
         print(f"Function1 executed with {param1=}, {param2=} and {param3=}")
-        return param1 + param2 + param3
+        MyFunction1.interval = 3 * random() # Change interval at runtime
+        return param1 + 1
     print(MyFunction1)
 
     # direct usage:
@@ -31,11 +31,16 @@ def Demo():
     print(my_function2_timer)
 
     VerySimple.reset().execute() # reset the timer and execute immediately
+    
+    counter = 0
 
-    while True:
+    @Every.While(30) # repeat for 30s
+    def timed_while():
+        nonlocal counter
+
         VerySimple()
 
-        executed, res = MyFunction1(counter) # Add param1 dynamically
+        executed, res = MyFunction1(param1=counter) # Add param1 dynamically
         if executed:
             print(f"Function1 returned: {res}, function2 time remaining: {my_function2_timer.time_remaining:.2f}s")
             counter += 1
