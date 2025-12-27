@@ -5,7 +5,7 @@ License: MIT
 Github: https://github.com/Hangover3832/every
 """
 from time import monotonic
-from typing import Callable, Any, NoReturn, Optional
+from typing import Callable, Any, NoReturn, Optional, Union
 from functools import wraps
 
 
@@ -58,55 +58,60 @@ class Every:
                     keep_interval=keep_interval
                     ).do(func
                     ).among(**kwargs
-                    ).using(timer_function)
+                    ).using(timer_function
+            )
             inst._is_decorator = True
             return inst
 
         return wrapper
     
-    @classmethod
+    @classmethod # Decorator for timed while loop
     def While(cls,
             interval: float,
             *,
             timer_function: Callable[[], float] = monotonic,
             **kwargs: Optional[Any]
-            ) -> Callable[[Callable], None]:
-    
+            ) -> Callable[[Callable], 'Every']:
+        """**Note that you cannot acces the instance within the loop until it is finished**"""
+
         @wraps(wrapped=cls)
-        def wrapper(func: Callable[[], float]) -> None:
-            cls(interval).do(func).among(**kwargs).using(timer_function).do_while()
+        def wrapper(func: Callable[[], float]) -> 'Every':
+            return cls(interval).do(func).among(**kwargs).using(timer_function).do_while()
 
         return wrapper
 
 
     def __init__(self, interval: float, *, execute_immediately: bool = False, keep_interval: bool = True) -> None:
-        if interval <= 0:
+        if interval < 0:
             raise ValueError("Error: Interval must be positive.")
 
         self._interval: float = interval
         self._keep_interval: bool = keep_interval
         self._time_func: Callable[[], float] = monotonic
-        self._action: Callable = self.dummy_action
+        self._action: Callable = self._dummy_action
         self._kwargs = {}
         self._paused: bool = False
         self._next_time: float = self._time_func() if execute_immediately else self._time_func() + interval
         self._is_decorator: bool = False
+        self._result = None
+        self.instance = self
 
 
-    def dummy_action(self, *args, **kwargs) -> NoReturn:
+    def _dummy_action(self, *args, **kwargs) -> NoReturn:
         raise ValueError("No action has been set. Use the 'do' method to set a function to execute.")
 
 
-    def do_while(self, *args, **kwargs) -> Any | None:
+    def do_while(self, *args, **kwargs) -> 'Every':
         """Do the action in a loop as long as the given interval.
         Usage: Every(timeout).do(my_function).among(param1=1, param2=2).do_while()"""
 
         result = None
+        self.instance = self
         merged_kwargs = {**self._kwargs, **kwargs}
         t = monotonic() + self._interval
         while monotonic() < t:
-            result = self._action(*args, **merged_kwargs)
-        return result
+            self._result = self._action(*args, **merged_kwargs)
+        return self
 
 
     def do(self, action: Callable) -> 'Every':
@@ -115,7 +120,7 @@ class Every:
         return self
 
 
-    def among(self, **kwargs: Any) -> 'Every':
+    def among(self, **kwargs: Optional[Any]) -> 'Every':
         self._kwargs = kwargs
         return self
 
@@ -144,7 +149,7 @@ class Every:
         return self
 
 
-    def __call__(self, *args, **kwargs: Any) -> tuple[bool, Optional[Any]]:
+    def __call__(self, *args, **kwargs: Any) -> bool:
         """
         Checks if the scheduled interval has passed and executes the stored function if so.
 
@@ -157,18 +162,18 @@ class Every:
                 - Any: The return value from the function if executed, or None otherwise.
         """        
         if self._paused:
-            return False, None
+            return False
         
         if self._time_func() >= self._next_time:
             self._next_time += self._interval # adding interval to keep correct time interval
             merged_kwargs = {**self._kwargs, **kwargs}
-            result = self._action(*args, **merged_kwargs) # execute the function
+            self._result = self._action(*args, **merged_kwargs) # execute the function
             if not self._keep_interval:
                 # If not keeping interval, reset next time to current time plus interval
                 self._next_time = self._time_func() + self._interval
-            return True, result
+            return True
 
-        return False, None
+        return False
 
 
     def __repr__(self) -> str:
@@ -177,10 +182,10 @@ class Every:
 
     def execute(self, *args: Optional[Any], **kwargs: Optional[Any]) -> Optional[Any]:
         """Execute the function immediately"""
-        if self._action is None:
-            raise ValueError("No action has been set. Use the 'do' method to set a function to execute.")
         merged_kwargs = {**self._kwargs, **kwargs}
-        return self._action(*args, **merged_kwargs)
+        self._result = self._action(*args, **merged_kwargs)
+        return self._result
+
 
     @property
     def interval(self) -> float:
@@ -223,3 +228,13 @@ class Every:
     @property
     def is_decorator(self) -> bool:
         return self._is_decorator
+
+    @property
+    def kwargs(self) -> dict:
+        """Get the stored keyword arguments"""
+        return self._kwargs
+
+    @property
+    def result(self) -> Any:
+        """Get the result of the last action call"""
+        return self._result
