@@ -19,6 +19,8 @@ The `Every` class provides a simple and efficient way to execute functions perio
 - No external dependencies
 - Customizable time function
 - Thread-safe execution
+- Easy timed while loop execution
+- Optional decorator usage
 
 ## Installation
 
@@ -81,6 +83,26 @@ while True:
     ...
 ```
 
+### Timed While Loop
+```python
+counter: int = 0
+
+@Every.While(5) # Execute function in a loop for 5s
+def print_something(greet:str, name:str):
+    nonlocal counter
+    print(f"[{counter}] Hello, {name})
+    counter += 1
+    sleep(0.1)
+
+# or, execute ones:
+Every(5).do(print_something).do_while(greet="Hello", name="Alex")
+
+# or, execute multiple times:
+timed_print = Every(5).do(print_something).among(greet="Holla").using(time)
+timed_print.do_while(name="Alex")
+timed_print.do_while(name="Alice")
+```
+
 ## API Reference
 
 ### Class: Every
@@ -90,7 +112,6 @@ while True:
 ```python
 Every(interval: float, execute_immediately: bool = False, keep_interval: bool = True)
 ```
-
 - `interval`: Time between executions in seconds
 - `execute_immediately`: Executes the function immediately upon the first call
 - `keep_interval (bool)`: Keep correct time interval if set to True, else keep time distance after function call
@@ -106,10 +127,11 @@ Every(interval: float, execute_immediately: bool = False, keep_interval: bool = 
 - `using(time_func: Callable) -> Every`: Optional - Set the time function (defaults to `monotonic`)
   - Returns: The Every instance for method chaining
 
-- `__call__(*args, **kwargs)`: Check if it's time to execute and run the function
-  - Returns: `tuple[bool, Any]`
-    - `bool`: Whether the function was executed
-    - `Any`: Return value from the function (if executed)
+- `do_while(*args, **kwargs) -> Any | None`: Runs the function in a loop until the specified time expires.
+  - Returns: The function's result after the last call.
+
+- `__call__(*args, **kwargs) -> bool`: Check if it's time to execute and run the function
+  - Returns: Whether the function was executed. Use the `result` property to get the result of the function call.
 
 - `reset()`: Resets the timer to start from current moment. 
   - Returns: The Every instance for method chaining, e.g. `.reset().execute()`
@@ -127,9 +149,12 @@ Every(interval: float, execute_immediately: bool = False, keep_interval: bool = 
 
 - `interval`: Get/set the time interval between executions
 - `time_remaining`: Get the remaining time until the next execution (read only)
+- `next_time`: Get the next execution time.
 - `time_func`: Get the function for retrieving current time (read only)
 - `is_decorator`: Check if this instance was created as a decorator or not (read only)
-
+- `paused`: Check if the execution is paued (read only)
+- `kwargs`: Get the stored keyword arguments (read only)
+- `result`: Get the result of the last action call (read only)
 
 ## Notes
 
