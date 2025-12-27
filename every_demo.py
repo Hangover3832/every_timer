@@ -31,7 +31,7 @@ def Demo():
     print(my_function2_timer)
 
     VerySimple.reset().execute() # reset the timer and execute immediately
-    
+
     counter = 0
 
     @Every.While(30) # repeat for 30s

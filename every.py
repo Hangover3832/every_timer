@@ -195,7 +195,7 @@ class Every:
         Args:
             value (float): The new time interval in seconds.
         """
-        if value <= 0:
+        if value < 0:
             raise ValueError("Interval must be positive")
         self._interval = value
         self.reset()
